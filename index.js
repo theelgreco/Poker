@@ -75,4 +75,3 @@ log(`Player One: ${players[0].cardOne.card} ${players[0].cardOne.suit} & ${playe
 
 log(`Player Two: ${players[1].cardOne.card} ${players[1].cardOne.suit} & ${players[1].cardTwo.card} ${players[1].cardTwo.suit}`)
 
-//s
