@@ -74,3 +74,5 @@ log(`${currentDeck.indexOf(players[1].cardOne)} & ${currentDeck.indexOf(players[
 log(`Player One: ${players[0].cardOne.card} ${players[0].cardOne.suit} & ${players[0].cardTwo.card} ${players[0].cardTwo.suit}`)
 
 log(`Player Two: ${players[1].cardOne.card} ${players[1].cardOne.suit} & ${players[1].cardTwo.card} ${players[1].cardTwo.suit}`)
+
+//s
