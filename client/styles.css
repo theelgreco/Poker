@@ -1,0 +1,363 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: linear-gradient(
+    20deg,
+    rgba(0, 0, 0, 0.933) -100%,
+    #3a3c419f 180%,
+    #abafbb 150%
+  );
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+}
+
+main {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+#playArea {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: fixed;
+  transform: translateX(-28.5%);
+}
+
+#table {
+  background: radial-gradient(rgba(14, 131, 14, 0.828), rgba(0, 0, 0, 0.609));
+  border: 20px ridge rgb(50, 48, 48);
+  border-radius: 50%;
+  width: 700px;
+  min-height: 400px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+button {
+  width: 200px;
+  height: 50px;
+  font-size: 20px;
+}
+
+#dealBtn {
+  background-color: black;
+  position: absolute;
+  top: 0%;
+  left: 0;
+  z-index: 1;
+}
+
+#flopBtn {
+  background-color: black;
+  position: absolute;
+  top: 7.5%;
+  left: 0;
+  z-index: 1;
+}
+
+#turnBtn {
+  background-color: black;
+  position: absolute;
+  top: 15%;
+  left: 0;
+  z-index: 1;
+}
+
+#riverBtn {
+  background-color: black;
+  position: absolute;
+  top: 22.5%;
+  left: 0;
+  z-index: 1;
+}
+
+#showCards {
+  background-color: black;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+}
+
+button:hover {
+  cursor: pointer;
+}
+
+.cardsBack {
+  border-radius: 8%;
+  margin: 2.5px;
+  padding: 25px;
+  min-height: 90px;
+  min-width: 65px;
+  background: center no-repeat
+    url("https://www.magicbox.uk.com/wp-content/uploads/2015/05/cardsbic809_red-alt2.jpg");
+  background-size: 150%;
+}
+
+.communityCards {
+  min-height: 115px;
+  max-height: 115px;
+  min-width: 55%;
+  max-width: 55%;
+  position: absolute;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.seats {
+  width: 150px;
+  height: 120px;
+  border-radius: 20% 20% 50% 50%;
+  background-color: rgb(0, 0, 0);
+  position: relative;
+}
+
+.seats:hover {
+  background-color: rgb(78, 78, 78);
+  -webkit-animation: fadein 0.5s;
+  animation: fadein 0.5s;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.active {
+  background-color: green;
+  width: 150px;
+  height: 120px;
+  border-radius: 20% 20% 50% 50%;
+  position: relative;
+}
+
+.active:hover {
+  background-color: rgb(109, 195, 109);
+  cursor: pointer;
+}
+
+@-webkit-keyframes fadein {
+  0% {
+    opacity: 0;
+  }
+}
+
+@keyframes fadein {
+  0% {
+    opacity: 0;
+  }
+}
+
+#seatOne {
+  top: 265px;
+  left: 1180px;
+}
+
+#seatTwo {
+  top: 205px;
+  left: 750px;
+  transform: rotate(30deg);
+}
+
+#seatThree {
+  top: -205px;
+  left: 600px;
+  transform: rotate(150deg);
+}
+
+#seatFour {
+  top: -265px;
+  left: 730px;
+  transform: rotate(180deg);
+}
+
+#seatFive {
+  top: -205px;
+  left: 850px;
+  transform: rotate(-150deg);
+}
+
+#seatSix {
+  top: 205px;
+  left: 710px;
+  transform: rotate(-30deg);
+}
+
+.playerCards {
+  height: 90px;
+  width: 130px;
+  position: absolute;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+}
+
+.playerCards:hover {
+  scale: 2;
+}
+
+#seatOneCards {
+  left: 74.3%;
+  top: 75%;
+}
+
+#seatOneCardOne {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatOneCardTwo {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatTwoCards {
+  left: 61%;
+  top: 65%;
+  transform: rotate(30deg);
+}
+
+#seatTwoCardOne {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatTwoCardTwo {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatThreeCards {
+  left: 60.5%;
+  top: 13%;
+  transform: rotate(-30deg);
+}
+
+#seatThreeCardOne {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatThreeCardTwo {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatFourCards {
+  left: 74.4%;
+  top: 1%;
+}
+
+#seatFourCardOne {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatFourCardTwo {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatFiveCards {
+  left: 87.5%;
+  top: 12%;
+  transform: rotate(30deg);
+}
+
+#seatFiveCardOne {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatFiveCardTwo {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatSixCards {
+  left: 88%;
+  top: 65%;
+  transform: rotate(-30deg);
+}
+
+#seatSixCardOne {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatSixCardTwo {
+  background: center no-repeat url("");
+  background-size: contain;
+}
+
+#seatThree div {
+  rotate: -180deg;
+}
+
+#seatFour div {
+  rotate: -180deg;
+}
+
+#seatFive div {
+  rotate: -180deg;
+}
+
+.playerBox {
+  z-index: 1;
+  position: absolute;
+  display: block;
+  opacity: 60%;
+  left: 1%;
+  top: 54%;
+  width: 280px;
+  height: 300px;
+  background-color: black;
+  color: white;
+  white-space: break-spaces;
+}
+
+.playButtonsContainer {
+  width: 100%;
+  left: 5%;
+  top: 65%;
+  position: absolute;
+  display: none;
+  /* display: inline-table; <--- use this when its players go */
+}
+
+.playButtons {
+  width: 30%;
+  position: absolute;
+  left: -3.5%;
+}
+
+.playButtons.bet {
+  white-space: initial;
+  margin-left: 10px;
+  margin-right: 10px;
+  left: 26.25%;
+}
+
+.playButtons.fold {
+  left: 62.5%;
+}
+
+.betInput {
+  position: absolute;
+  left: 0%;
+  margin-top: 65px;
+  height: 30px;
+  width: 90%;
+}

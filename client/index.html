@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <main>
+      <!-- <div id="dealBtn">
+        <button>DEAL</button>
+      </div>
+      <div id="flopBtn">
+        <button>FLOP</button>
+      </div>
+      <div id="turnBtn">
+        <button>TURN</button>
+      </div>
+      <div id="riverBtn">
+        <button>RIVER</button>
+      </div>
+      <div id="showCards">
+        <button>SHOW CARDS</button>
+      </div> -->
+
+      <!-- <span id="stackText"></span> -->
+      <div class="playerBox">
+        <div id="usernameText">USERNAME:</div>
+        <div><span>STACK:</span><span id="stack"> 5000</span></div>
+        <div id="cardsText">CARDS:</div>
+
+        <div class="playButtonsContainer" id="playButtonsContainer">
+          <button id="checkBtn" class="playButtons check">CHECK</button>
+          <button id="betBtn" class="playButtons bet" type="submit">BET</button>
+          <button id="foldBtn" class="playButtons fold">FOLD</button>
+          <input
+            class="betInput"
+            type="range"
+            min="1"
+            max="100"
+            value="1"
+            id="betInput"
+            placeholder="BET SIZE" />
+        </div>
+      </div>
+
+      <div id="playArea">
+        <div class="seats" id="seatOne"></div>
+        <div class="playerCards" id="seatOneCards">
+          <div class="hand cardsBack cardsFront" id="seatOneCardOne"></div>
+          <div class="hand cardsBack cardsFront" id="seatOneCardTwo"></div>
+        </div>
+
+        <div class="seats" id="seatTwo"></div>
+        <div class="playerCards" id="seatTwoCards">
+          <div class="hand cardsBack cardsFront" id="seatTwoCardOne"></div>
+          <div class="hand cardsBack cardsFront" id="seatTwoCardTwo"></div>
+        </div>
+
+        <div class="seats" id="seatThree"></div>
+        <div class="playerCards" id="seatThreeCards">
+          <div class="hand cardsBack cardsFront" id="seatThreeCardOne"></div>
+          <div class="hand cardsBack cardsFront" id="seatThreeCardTwo"></div>
+        </div>
+
+        <div class="seats" id="seatFour"></div>
+        <div id="seatFourRotate"></div>
+        <div class="playerCards" id="seatFourCards">
+          <div class="hand cardsBack cardsFront" id="seatFourCardOne"></div>
+          <div class="hand cardsBack cardsFront" id="seatFourCardTwo"></div>
+        </div>
+
+        <div class="seats" id="seatFive"></div>
+        <div class="playerCards" id="seatFiveCards">
+          <div class="hand cardsBack cardsFront" id="seatFiveCardOne"></div>
+          <div class="hand cardsBack cardsFront" id="seatFiveCardTwo"></div>
+        </div>
+
+        <div class="seats" id="seatSix"></div>
+        <div class="playerCards" id="seatSixCards">
+          <div class="hand cardsBack cardsFront" id="seatSixCardOne"></div>
+          <div class="hand cardsBack cardsFront" id="seatSixCardTwo"></div>
+        </div>
+
+        <div id="table">
+          <div class="communityCards">
+            <div id="firstCard" class="cardsBack cardsFront"></div>
+            <div id="secondCard" class="cardsBack"></div>
+            <div id="thirdCard" class="cardsBack"></div>
+            <div id="fourthCard" class="cardsBack"></div>
+            <div id="fifthCard" class="cardsBack"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="../server.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="index.js"></script>
+  </body>
+</html>
