@@ -9,32 +9,18 @@
   </head>
   <body>
     <main>
-      <!-- <div id="dealBtn">
-        <button>DEAL</button>
-      </div>
-      <div id="flopBtn">
-        <button>FLOP</button>
-      </div>
-      <div id="turnBtn">
-        <button>TURN</button>
-      </div>
-      <div id="riverBtn">
-        <button>RIVER</button>
-      </div>
-      <div id="showCards">
-        <button>SHOW CARDS</button>
-      </div> -->
-
-      <!-- <span id="stackText"></span> -->
       <div class="playerBox">
         <div id="usernameText">USERNAME:</div>
         <div><span>STACK:</span><span id="stack"> 5000</span></div>
         <div id="cardsText">CARDS:</div>
 
         <div class="playButtonsContainer" id="playButtonsContainer">
-          <button id="checkBtn" class="playButtons check">CHECK</button>
-          <button id="betBtn" class="playButtons bet" type="submit">BET</button>
+          <!-- <button id="checkBtn" class="playButtons check">CHECK</button> -->
           <button id="foldBtn" class="playButtons fold">FOLD</button>
+          <button id="callBtn" class="playButtons call">CALL</button>
+          <button id="betBtn" class="playButtons raise" type="submit">
+            RAISE
+          </button>
           <input
             class="betInput"
             type="range"
@@ -92,6 +78,7 @@
             <div id="fourthCard" class="cardsBack"></div>
             <div id="fifthCard" class="cardsBack"></div>
           </div>
+          <div id="pot" class="pot">POT</div>
         </div>
       </div>
     </main>

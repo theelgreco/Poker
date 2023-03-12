@@ -123,8 +123,13 @@ button:hover {
   width: 150px;
   height: 120px;
   border-radius: 20% 20% 50% 50%;
-  background-color: rgb(0, 0, 0);
+  background-color: black;
   position: relative;
+  /* background-image: url("../black-chair.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  rotate: 180deg; */
 }
 
 .seats:hover {
@@ -340,18 +345,22 @@ button:hover {
 .playButtons {
   width: 30%;
   position: absolute;
+}
+
+.playButtons.fold {
   left: -3.5%;
 }
 
-.playButtons.bet {
+.playButtons.call {
   white-space: initial;
   margin-left: 10px;
   margin-right: 10px;
   left: 26.25%;
 }
 
-.playButtons.fold {
+.playButtons.raise {
   left: 62.5%;
+  white-space: initial;
 }
 
 .betInput {
@@ -360,4 +369,11 @@ button:hover {
   margin-top: 65px;
   height: 30px;
   width: 90%;
+}
+
+.pot {
+  position: absolute;
+  top: 25%;
+  color: wheat;
+  font-size: 2em;
 }

@@ -2,9 +2,14 @@ const socket = io();
 let gameTablePlayers;
 const betInput = document.getElementById("betInput");
 const betBtn = document.getElementById("betBtn");
+const callBtn = document.getElementById("callBtn");
+const foldBtn = document.getElementById("foldBtn");
 const playButtonsContainer = document.getElementById("playButtonsContainer");
+const pot = document.getElementById("pot");
 let currentStack = 5000;
 let clicked = false;
+let currentSeat;
+
 const seatButtons = [
   document.getElementById("seatOne"),
   document.getElementById("seatTwo"),
@@ -31,7 +36,7 @@ betBtn.addEventListener("click", () => {
   const betSize = betInput.value;
   clicked = true;
   playButtonsContainer.style.display = "none";
-  socket.emit("bet", betSize);
+  socket.emit("bet", { betSize, currentSeat });
 });
 
 betInput.addEventListener("wheel", function (e) {
@@ -41,13 +46,13 @@ betInput.addEventListener("wheel", function (e) {
     betInput.value -= 1;
   }
   console.log(betInput.value);
-  betBtn.innerHTML = `BET ${currentStack * (betInput.valueAsNumber / 100)}`;
+  betBtn.innerHTML = `RAISE ${currentStack * (betInput.valueAsNumber / 100)}`;
   e.preventDefault();
   e.stopPropagation();
 });
 
 betInput.addEventListener("input", () => {
-  betBtn.innerHTML = `BET ${currentStack * (betInput.valueAsNumber / 100)}`;
+  betBtn.innerHTML = `RAISE ${currentStack * (betInput.valueAsNumber / 100)}`;
 });
 
 socket.on("connection", (tableOne) => {
@@ -64,6 +69,7 @@ socket.on("connection", (tableOne) => {
 });
 
 socket.on("success", (seatId) => {
+  currentSeat = seatId;
   document.getElementById(seatId).style.backgroundColor = "green";
   document.getElementById("usernameText").innerHTML = `USERNAME: ${prompt(
     "username"
@@ -97,13 +103,42 @@ socket.on("dealt", ({ cardOne, cardTwo, seatId, stack }) => {
 //testing at the moment: counter only on playerOne
 socket.on("startGame", (seatId, betSize) => {
   if (betSize) {
-    betInput.min = betSize;
-    console.log(betSize);
+    const minRaise = (betSize / currentStack) * 100 * 2;
+    if (betSize >= currentStack) {
+      betBtn.style.display = "none";
+      betInput.style.display = "none";
+      callBtn.innerText = `ALL IN`;
+      callBtn.value = currentStack;
+    } else if (betSize * 2 >= currentStack) {
+      callBtn.innerText = `CALL ${betSize}`;
+      betBtn.innerText = `ALL IN`;
+      betInput.min = 100;
+      betInput.value = 100;
+    } else {
+      callBtn.value = betSize;
+      callBtn.innerText = `CALL ${betSize}`;
+      betBtn.innerText = `RAISE ${currentStack * (minRaise / 100)}`;
+      betInput.min = minRaise;
+      console.log(betSize);
+    }
   }
 
   clicked = false;
+
   countdown(seatId);
+
   playButtonsContainer.style.display = "inline-table";
+
+  foldBtn.addEventListener("click", () => {
+    clicked = true;
+    socket.emit("fold", seatId);
+  });
+});
+
+socket.on("fold", (seatId) => {
+  playButtonsContainer.style.display = "none";
+  document.getElementById(`${seatId}CardOne`).style.background = "";
+  document.getElementById(`${seatId}CardTwo`).style.background = "";
 });
 
 socket.on("table", (tableOne) => {
@@ -117,6 +152,17 @@ socket.on("bet", (stack) => {
   currentStack = stack;
 });
 
+socket.on("pot", (betSize) => {
+  pot.innerText = `POT ${betSize}`;
+});
+
+socket.on("gameEnded", (seatId) => {
+  playButtonsContainer.style.display = "none";
+  document.getElementById(`${seatId}CardOne`).style.background = "";
+  document.getElementById(`${seatId}CardTwo`).style.background = "";
+  document.getElementById(seatId).innerHTML = null;
+});
+
 socket.on("disconnect", () => {});
 
 function countdown(seatId) {
@@ -125,6 +171,15 @@ function countdown(seatId) {
     seconds--;
     document.getElementById(seatId).innerHTML = `<div>${seconds}</div>`;
     console.log(seconds);
+
+    socket.on("gameEnded", () => {
+      clearInterval(counter);
+    });
+
+    if (seconds === 0) {
+      socket.emit("fold", seatId);
+    }
+
     if (clicked || seconds === 0) {
       clearInterval(counter);
       document.getElementById(seatId).innerHTML = null;
