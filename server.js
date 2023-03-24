@@ -45,6 +45,8 @@ const tableOne = {
 let playersSat;
 let activePlayers;
 let lastToAct;
+let lastToActIndex;
+let lastToActPlayed = false;
 
 io.on("connection", (socket) => {
   const clients = [];
@@ -146,24 +148,35 @@ io.on("connection", (socket) => {
 
   //if anything messes up, everything up to socket.on disconnect was moved out of socket.on sit
   socket.on("game", (index, move, betSize, seat) => {
-    if (tableOne.bettingRound === "preflop") {
-      lastToAct = Object.keys(activePlayers[activePlayers.length - 1])[0];
-    } else {
-      if (activePlayers.length > 2) {
-        lastToAct = Object.keys(activePlayers[activePlayers.length - 3])[0];
+    console.log(betSize, "<----bet");
+    console.log(activePlayers, "<---------active");
+
+    if (!lastToActPlayed) {
+      if (tableOne.bettingRound === "preflop") {
+        lastToActIndex = activePlayers.length - 1;
+        lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
       } else {
-        lastToAct = Object.keys(activePlayers[activePlayers.length - 2])[0];
+        if (activePlayers.length > 2) {
+          lastToActIndex = activePlayers.length - 3;
+          lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
+        } else {
+          lastToActIndex = activePlayers.length - 2;
+          lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
+        }
       }
     }
+
+    // if (seat === lastToAct && lastToActPlayed) lastToActPlayed = false;
 
     console.log(index, "||", move, betSize, seat, "||", lastToAct);
 
     if (move === "fold") {
-      activePlayers[index].playing = false;
       activePlayers.splice(index, 1);
 
       //end game if 1 player left
       if (activePlayers.length === 1) {
+        lastToActPlayed = false;
+        io.emit("gameOver");
         const { index, firstPlayerClientId } = initGame(playersSat, tableOne);
         console.dir(tableOne, { depth: null });
         console.log(tableOne.deck.length);
@@ -214,13 +227,15 @@ io.on("connection", (socket) => {
       currentPlayer[currentPlayerSeat].stake +=
         betSize - currentPlayer[currentPlayerSeat].stake;
 
-      console.log(currentPlayer);
+      // console.log(currentPlayer);
     }
 
     if (move === "call" || move === "check") {
       if (tableOne.bettingRound === "preflop" && seat === lastToAct) {
+        console.log("yep");
         tableOne.bettingRound = "flop";
         dealFlop(tableOne);
+        lastToActPlayed = false;
         betSize = 0;
         activePlayers.map((player) => {
           const seatName = Object.keys(player)[0];
@@ -246,6 +261,7 @@ io.on("connection", (socket) => {
         tableOne.bettingRound = "turn";
         betSize = 0;
         dealTurn(tableOne);
+        lastToActPlayed = false;
         activePlayers.map((player) => {
           const seatName = Object.keys(player)[0];
           player[seatName].stake = 0;
@@ -269,6 +285,7 @@ io.on("connection", (socket) => {
       } else if (tableOne.bettingRound === "turn" && seat === lastToAct) {
         tableOne.bettingRound = "river";
         dealRiver(tableOne);
+        lastToActPlayed = false;
         betSize = 0;
         activePlayers.map((player) => {
           const seatName = Object.keys(player)[0];
@@ -296,23 +313,29 @@ io.on("connection", (socket) => {
         console.log(hands);
         fetchWinningHand(hands).then((res) => {
           console.log(res);
-          // start new game
-          const { index, firstPlayerClientId } = initGame(playersSat, tableOne);
-          console.dir(tableOne, { depth: null });
-          console.log(tableOne.deck.length);
-          activePlayers = playersSat.filter((seat) => {
-            const seatName = Object.keys(seat)[0];
-            return seat[seatName].playing === true;
-          });
-          io.emit("gameOver");
-          io.emit("updatePot", tableOne.pot);
-          activePlayers.forEach((player) => {
-            const seatName = Object.keys(player)[0];
-            const cards = player[seatName].cards;
-            io.to(player[seatName].clientId).emit("cards", cards, seatName);
-          });
-          const betSize = 50;
-          io.to(firstPlayerClientId).emit("game", index, betSize);
+          setTimeout(() => {
+            // start new game
+            lastToActPlayed = false;
+            const { index, firstPlayerClientId } = initGame(
+              playersSat,
+              tableOne
+            );
+            console.dir(tableOne, { depth: null });
+            console.log(tableOne.deck.length);
+            activePlayers = playersSat.filter((seat) => {
+              const seatName = Object.keys(seat)[0];
+              return seat[seatName].playing === true;
+            });
+            io.emit("gameOver");
+            io.emit("updatePot", tableOne.pot);
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              const cards = player[seatName].cards;
+              io.to(player[seatName].clientId).emit("cards", cards, seatName);
+            });
+            const betSize = 50;
+            io.to(firstPlayerClientId).emit("game", index, betSize);
+          }, 5000);
         });
       }
       //if there is a player at the index send game to them
@@ -334,6 +357,19 @@ io.on("connection", (socket) => {
     }
 
     if (move === "raise") {
+      if (seat === lastToAct) {
+        lastToActPlayed = true;
+        console.log("yep");
+
+        if (lastToActIndex + 1 > activePlayers.length - 1) {
+          lastToActIndex = 0;
+        } else {
+          lastToActIndex += 1;
+        }
+        lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
+        // console.log(lastToAct, lastToActIndex);
+      }
+
       //if there is a player at the index send game to them
       //else send to player at index 0
       if (activePlayers[index]) {
