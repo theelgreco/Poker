@@ -18,17 +18,26 @@
           <!-- <button id="checkBtn" class="playButtons check">CHECK</button> -->
           <button id="foldBtn" class="playButtons fold">FOLD</button>
           <button id="callBtn" class="playButtons call">CALL</button>
-          <button id="betBtn" class="playButtons raise" type="submit">
-            RAISE
-          </button>
+          <button id="checkBtn" class="playButtons check">CHECK</button>
+          <button id="betBtn" class="playButtons raise">RAISE</button>
           <input
+            class="betInput"
+            type="number"
+            id="betInput"
+            step="25"
+            min="100"
+            value="100"
+            max="5000"
+            placeholder="BET SIZE" />
+
+          <!-- <input
             class="betInput"
             type="range"
             min="1"
             max="100"
             value="1"
             id="betInput"
-            placeholder="BET SIZE" />
+            placeholder="BET SIZE" /> -->
         </div>
       </div>
 
@@ -73,17 +82,16 @@
         <div id="table">
           <div class="communityCards">
             <div id="firstCard" class="cardsBack cardsFront"></div>
-            <div id="secondCard" class="cardsBack"></div>
-            <div id="thirdCard" class="cardsBack"></div>
-            <div id="fourthCard" class="cardsBack"></div>
-            <div id="fifthCard" class="cardsBack"></div>
+            <div id="secondCard" class="cardsBack cardsFront"></div>
+            <div id="thirdCard" class="cardsBack cardsFront"></div>
+            <div id="fourthCard" class="cardsBack cardsFront"></div>
+            <div id="fifthCard" class="cardsBack cardsFront"></div>
           </div>
           <div id="pot" class="pot">POT</div>
         </div>
       </div>
     </main>
 
-    <script src="../server.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="index.js"></script>
   </body>
