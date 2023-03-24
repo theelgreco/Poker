@@ -1,30 +1,47 @@
 const deck = require("./constants.js");
 
-function dealCards(table) {
+function dealCards(players, table) {
   const freshDeck = newDeck(deck);
   shuffle(freshDeck);
   table.deck = freshDeck;
 
-  for (const player in table.players) {
-    const seatNumber = table.players[player].seatId;
+  players.forEach((player) => {
+    const seatName = Object.keys(player)[0];
     const RNG = Math.ceil(Math.random() * table.deck.length - 1);
-    table.players[player].cardOne = table.deck[RNG];
-    table.players[player].playing = true;
-    table.seats.map((seat) => {
-      if (Object.keys(seat)[0] === seatNumber) {
-        seat[seatNumber].playing = true;
-      }
-    });
+    player[seatName].cards.push(table.deck[RNG]);
     table.deck.splice(RNG, 1);
-  }
+  });
 
-  for (const player in table.players) {
+  players.forEach((player) => {
+    const seatName = Object.keys(player)[0];
     const RNG = Math.ceil(Math.random() * table.deck.length - 1);
-    table.players[player].cardTwo = table.deck[RNG];
+    player[seatName].cards.push(table.deck[RNG]);
     table.deck.splice(RNG, 1);
-  }
+  });
 
   return table;
+}
+
+function dealFlop(table) {
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 1; j++) {
+      const RNG = Math.ceil(Math.random() * table.deck.length - 1);
+      table.communityCards[0].push(table.deck[RNG]);
+      table.deck.splice(RNG, 1);
+    }
+  }
+}
+
+function dealTurn(table) {
+  const RNG = Math.ceil(Math.random() * table.deck.length - 1);
+  table.communityCards[1].push(table.deck[RNG]);
+  table.deck.splice(RNG, 1);
+}
+
+function dealRiver(table) {
+  const RNG = Math.ceil(Math.random() * table.deck.length - 1);
+  table.communityCards[2].push(table.deck[RNG]);
+  table.deck.splice(RNG, 1);
 }
 
 function newDeck(deck) {
@@ -46,4 +63,4 @@ function shuffle(array) {
   }
 }
 
-module.exports = { dealCards, newDeck, shuffle };
+module.exports = { dealCards, dealFlop, dealTurn, dealRiver };

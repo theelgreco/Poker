@@ -358,6 +358,14 @@ button:hover {
   left: 26.25%;
 }
 
+.playButtons.check {
+  display: none;
+  white-space: initial;
+  margin-left: 10px;
+  margin-right: 10px;
+  left: 26.25%;
+}
+
 .playButtons.raise {
   left: 62.5%;
   white-space: initial;
@@ -376,4 +384,14 @@ button:hover {
   top: 25%;
   color: wheat;
   font-size: 2em;
+}
+
+video {
+  width: 15em;
+  height: 15em;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 15px solid black;
+  position: absolute;
+  top: 0;
 }
