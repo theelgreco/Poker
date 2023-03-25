@@ -15,21 +15,8 @@ const {
 
 const { formatHands, fetchWinningHand } = require("./utils.js");
 
-let firstToBet;
-let gameInProgress;
-
-const playerNames = [
-  "playerOne",
-  "playerTwo",
-  "playerThree",
-  "playerFour",
-  "playerFive",
-  "playerSix",
-];
-
 const tableOne = {
   deck: null,
-  players: {},
   pot: 0,
   seats: [
     { seatOne: { clientId: null } },
@@ -42,9 +29,13 @@ const tableOne = {
   communityCards: [[], [], []],
 };
 
+let gameInProgress;
 let playersSat;
 let activePlayers;
 let lastToAct;
+let lastToActIndex;
+let lastToActPlayed = false;
+let clientsSat = [];
 
 io.on("connection", (socket) => {
   const clients = [];
@@ -52,8 +43,24 @@ io.on("connection", (socket) => {
   for (let sockets in io.sockets.sockets) {
     clients.push(sockets);
   }
+
+  const seats = tableOne.seats;
+
+  seats.forEach((seat) => {
+    const seatName = Object.keys(seat)[0];
+    if (seat[seatName].clientId) {
+      socket.emit("opponent", seatName);
+    }
+  });
+
   socket.emit("connection", tableOne);
-  socket.emit("updatePot", tableOne.pot);
+
+  if (tableOne.bettingRound === "preflop") {
+    socket.emit("updatePot", 0);
+  } else {
+    socket.emit("updatePot", tableOne.pot);
+  }
+
   if (tableOne.communityCards[0].length) {
     socket.emit("flop", tableOne.communityCards[0]);
   }
@@ -63,61 +70,50 @@ io.on("connection", (socket) => {
   if (tableOne.communityCards[2].length) {
     socket.emit("river", tableOne.communityCards[2]);
   }
+  if (activePlayers) {
+    let activeSeatNames = [];
+    activePlayers.forEach((player) => {
+      const seatName = Object.keys(player)[0];
+      activeSeatNames.push([seatName, player[seatName].stake]);
+    });
+    io.emit("stakes", activeSeatNames);
+  }
 
   console.log("a user has connected " + clientId);
   console.log(clients);
 
   socket.on("sit", ({ clientId, seatId }) => {
-    //The values for each active player on the table object --> the values are clientId, cards, etc.
-    const eachPlayerObject = Object.values(tableOne.players);
-    //The active player names on the table object, e.g playerOne
-    const eachPlayerName = Object.keys(tableOne.players);
     //seat objects on the table object
     const seats = tableOne.seats;
 
-    for (player of eachPlayerObject) {
-      //Alert player if they are already sat in a seat
-      if (player.clientId === clientId) {
-        socket.emit("alreadySat");
-        return;
-      }
-
-      //Alert player if someone is already sat in the seat they selected
-      if (player.seatId === seatId) {
-        socket.emit("seatTaken", seatId);
-        return;
-      }
-    }
-
-    //This is the index of the next player name that is available on the playerNames array
-    const nextAvailablePlayerName =
-      playerNames[
-        playerNames.indexOf(eachPlayerName[eachPlayerName.length - 1]) + 1
-      ];
-
-    //Assign each player to correct player name on sit, e.g playerOne
-    if (eachPlayerName.length === 0) {
-      //Assign first player to playerOne in players object on tableOne object
-      tableOne.players.playerOne = { clientId, seatId };
-      io.to(clientId).emit("success", seatId);
-      socket.broadcast.emit("opponent", seatId);
-    } else {
-      //Assign players to next available player name in players object on tableOne object
-      tableOne.players[nextAvailablePlayerName] = {
-        clientId,
-        seatId,
-      };
-      io.to(clientId).emit("success", seatId, clientId);
-      socket.broadcast.emit("opponent", seatId);
-    }
-
     //Assign each player to correct seat in seats array on tableOne object
-    seats.map((seat) => {
-      const seatName = Object.keys(seat)[0];
-      if (seatId === seatName) {
-        seat[seatId].clientId = clientId;
-        seat[seatId].stack = 5000;
+    for (let i = 0; i < seats.length; i++) {
+      const seatName = Object.keys(seats[i])[0];
+      //prettier-ignore
+      if (seats[i][seatName].clientId && seats[i][seatName].clientId !== clientId && seatName === seatId) {
+        socket.emit("seatTaken", seatName);
+        break;
+      } else if (clientsSat.includes(clientId)) {
+        socket.emit("alreadySat");
+        break;
+      } else if (seatName === seatId) {
+        seats[i][seatId].clientId = clientId;
+        seats[i][seatId].stack = 5000;
+        socket.emit("success", seatName);
+        socket.broadcast.emit("opponent", seatName);
+        clientsSat.push(clientId);
+        break;
       }
+    }
+
+    //assign username to seat
+    socket.on("username", (username, seat) => {
+      seats.map((player) => {
+        const seatName = Object.keys(player)[0];
+        if (seatName === seat) {
+          player[seatName].username = username;
+        }
+      });
     });
 
     playersSat = seats.filter((seat) => {
@@ -137,71 +133,314 @@ io.on("connection", (socket) => {
       activePlayers.forEach((player) => {
         const seatName = Object.keys(player)[0];
         const cards = player[seatName].cards;
+        const stake = player[seatName].stake;
         io.to(player[seatName].clientId).emit("cards", cards, seatName);
+        io.to(player[seatName].clientId).emit("stake", stake);
       });
       io.to(firstPlayerClientId).emit("game", index, 50);
-      io.emit("updatePot", tableOne.pot);
+
+      let activeSeatNames = [];
+      activePlayers.forEach((player) => {
+        const seatName = Object.keys(player)[0];
+        activeSeatNames.push([seatName, player[seatName].stake]);
+      });
+      io.emit("stakes", activeSeatNames);
     }
   });
 
   //if anything messes up, everything up to socket.on disconnect was moved out of socket.on sit
   socket.on("game", (index, move, betSize, seat) => {
-    if (tableOne.bettingRound === "preflop") {
-      lastToAct = Object.keys(activePlayers[activePlayers.length - 1])[0];
-    } else {
-      if (activePlayers.length > 2) {
-        lastToAct = Object.keys(activePlayers[activePlayers.length - 3])[0];
+    console.log(betSize, "<----bet");
+    console.log(activePlayers, "<---------active");
+
+    if (!lastToActPlayed) {
+      if (tableOne.bettingRound === "preflop") {
+        lastToActIndex = activePlayers.length - 1;
+        lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
       } else {
-        lastToAct = Object.keys(activePlayers[activePlayers.length - 2])[0];
+        if (activePlayers.length > 2) {
+          lastToActIndex = activePlayers.length - 3;
+          lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
+        } else {
+          lastToActIndex = activePlayers.length - 2;
+          lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
+        }
       }
     }
 
     console.log(index, "||", move, betSize, seat, "||", lastToAct);
 
     if (move === "fold") {
+      io.emit("stakes", seat, true);
+
       activePlayers.splice(index, 1);
 
       //end game if 1 player left
       if (activePlayers.length === 1) {
         const hands = formatHands(tableOne);
-        console.log(hands);
         fetchWinningHand(hands).then((res) => {
           console.log(res);
-          // start new game
-          const { index, firstPlayerClientId } = initGame(playersSat, tableOne);
-          console.dir(tableOne, { depth: null });
-          console.log(tableOne.deck.length);
-          activePlayers = playersSat.filter((seat) => {
-            const seatName = Object.keys(seat)[0];
-            return seat[seatName].playing === true;
+
+          lastToActPlayed = false;
+
+          setTimeout(() => {
+            let activeSeatNames = [];
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              activeSeatNames.push(seatName);
+            });
+            io.emit("gameOver", activeSeatNames);
+          }, 2000);
+
+          setTimeout(() => {
+            // start new game
+            const { index, firstPlayerClientId } = initGame(
+              playersSat,
+              tableOne
+            );
+
+            console.dir(tableOne, { depth: null });
+            console.log(tableOne.deck.length);
+
+            activePlayers = playersSat.filter((seat) => {
+              const seatName = Object.keys(seat)[0];
+              return seat[seatName].playing === true;
+            });
+
+            io.emit("updatePot", 0);
+
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              const cards = player[seatName].cards;
+              io.to(player[seatName].clientId).emit("cards", cards, seatName);
+            });
+
+            let activeSeatNames = [];
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              activeSeatNames.push([seatName, player[seatName].stake]);
+            });
+            io.emit("stakes", activeSeatNames);
+
+            const betSize = 50;
+
+            io.to(firstPlayerClientId).emit("game", index, betSize);
+          }, 5000);
+        });
+      } else if (tableOne.bettingRound === "preflop" && seat === lastToAct) {
+        console.log("yep");
+        betSize = 0;
+
+        setTimeout(() => {
+          tableOne.bettingRound = "flop";
+          dealFlop(tableOne);
+          lastToActPlayed = false;
+          activePlayers.map((player) => {
+            const seatName = Object.keys(player)[0];
+            player[seatName].stake = 0;
           });
-          io.emit("gameOver");
-          io.emit("updatePot", tableOne.pot);
+
+          let activeSeatNames = [];
           activePlayers.forEach((player) => {
             const seatName = Object.keys(player)[0];
-            const cards = player[seatName].cards;
-            io.to(player[seatName].clientId).emit("cards", cards, seatName);
+            activeSeatNames.push(seatName);
           });
-          const betSize = 50;
-          io.to(firstPlayerClientId).emit("game", index, betSize);
-        });
-      }
+          io.emit("newRound", activeSeatNames);
 
-      if (seat === lastToAct) {
+          io.emit("updatePot", tableOne.pot);
+          io.emit("flop", tableOne.communityCards[0]);
+        }, 1000);
+
+        if (activePlayers.length > 2) {
+          index = activePlayers.length - 2;
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        } else {
+          index = activePlayers.length - 1;
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        }
+      } else if (tableOne.bettingRound === "flop" && seat === lastToAct) {
         betSize = 0;
-      }
 
-      if (activePlayers[index]) {
-        const nextPlayer = activePlayers[index];
-        const nextPlayerSeat = Object.keys(nextPlayer)[0];
-        const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-        io.to(nextPlayerClientId).emit("game", index, betSize);
+        setTimeout(() => {
+          tableOne.bettingRound = "turn";
+          dealTurn(tableOne);
+          lastToActPlayed = false;
+          activePlayers.map((player) => {
+            const seatName = Object.keys(player)[0];
+            player[seatName].stake = 0;
+          });
+
+          let activeSeatNames = [];
+          activePlayers.forEach((player) => {
+            const seatName = Object.keys(player)[0];
+            activeSeatNames.push(seatName);
+          });
+          io.emit("newRound", activeSeatNames);
+
+          io.emit("updatePot", tableOne.pot);
+          io.emit("turn", tableOne.communityCards[1]);
+        }, 1000);
+
+        if (activePlayers.length > 2) {
+          index = activePlayers.length - 2;
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        } else {
+          index = activePlayers.length - 1;
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        }
+      } else if (tableOne.bettingRound === "turn" && seat === lastToAct) {
+        betSize = 0;
+
+        setTimeout(() => {
+          tableOne.bettingRound = "river";
+          dealRiver(tableOne);
+          lastToActPlayed = false;
+
+          activePlayers.map((player) => {
+            const seatName = Object.keys(player)[0];
+            player[seatName].stake = 0;
+          });
+
+          let activeSeatNames = [];
+          activePlayers.forEach((player) => {
+            const seatName = Object.keys(player)[0];
+            activeSeatNames.push(seatName);
+          });
+          io.emit("newRound", activeSeatNames);
+
+          io.emit("updatePot", tableOne.pot);
+          io.emit("river", tableOne.communityCards[2]);
+        }, 1000);
+
+        if (activePlayers.length > 2) {
+          index = activePlayers.length - 2;
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        } else {
+          index = activePlayers.length - 1;
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        }
+      } else if (tableOne.bettingRound === "river" && seat === lastToAct) {
+        //calculate winner
+        const hands = formatHands(tableOne);
+
+        fetchWinningHand(hands).then((res) => {
+          console.log(res);
+
+          lastToActPlayed = false;
+
+          setTimeout(() => {
+            let activeSeatNames = [];
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              activeSeatNames.push(seatName);
+            });
+            io.emit("gameOver", activeSeatNames);
+          }, 2000);
+
+          setTimeout(() => {
+            // start new game
+            const { index, firstPlayerClientId } = initGame(
+              playersSat,
+              tableOne
+            );
+
+            console.dir(tableOne, { depth: null });
+            console.log(tableOne.deck.length);
+
+            activePlayers = playersSat.filter((seat) => {
+              const seatName = Object.keys(seat)[0];
+              return seat[seatName].playing === true;
+            });
+
+            io.emit("updatePot", 0);
+
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              const cards = player[seatName].cards;
+              io.to(player[seatName].clientId).emit("cards", cards, seatName);
+            });
+
+            let activeSeatNames = [];
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              activeSeatNames.push([seatName, player[seatName].stake]);
+            });
+            io.emit("stakes", activeSeatNames);
+
+            const betSize = 50;
+
+            io.to(firstPlayerClientId).emit("game", index, betSize);
+          }, 5000);
+        });
       } else {
-        index = 0;
-        const firstPlayer = activePlayers[0];
-        const firstPlayerSeatName = Object.keys(firstPlayer)[0];
-        const firstPlayerClientId = firstPlayer[firstPlayerSeatName].clientId;
-        io.to(firstPlayerClientId).emit("game", index, betSize);
+        if (activePlayers[index]) {
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        } else {
+          index = 0;
+          const firstPlayer = activePlayers[0];
+          const firstPlayerSeatName = Object.keys(firstPlayer)[0];
+          const firstPlayerClientId = firstPlayer[firstPlayerSeatName].clientId;
+          console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(firstPlayerClientId).emit("game", index, betSize);
+          }, 1200);
+        }
       }
     }
 
@@ -221,139 +460,346 @@ io.on("connection", (socket) => {
       currentPlayer[currentPlayerSeat].stake +=
         betSize - currentPlayer[currentPlayerSeat].stake;
 
-      console.log(currentPlayer);
+      let activeSeatNames = [];
+      activePlayers.forEach((player) => {
+        const seatName = Object.keys(player)[0];
+        activeSeatNames.push([seatName, player[seatName].stake]);
+      });
+      io.emit("stakes", activeSeatNames);
+      // console.log(currentPlayer);
     }
 
     if (move === "call" || move === "check") {
       if (tableOne.bettingRound === "preflop" && seat === lastToAct) {
-        tableOne.bettingRound = "flop";
-        dealFlop(tableOne);
+        console.log("yep");
         betSize = 0;
-        activePlayers.map((player) => {
-          const seatName = Object.keys(player)[0];
-          player[seatName].stake = 0;
-        });
-        io.emit("flop", tableOne.communityCards[0]);
+
+        setTimeout(() => {
+          tableOne.bettingRound = "flop";
+          dealFlop(tableOne);
+          lastToActPlayed = false;
+          activePlayers.map((player) => {
+            const seatName = Object.keys(player)[0];
+            player[seatName].stake = 0;
+          });
+
+          let activeSeatNames = [];
+          activePlayers.forEach((player) => {
+            const seatName = Object.keys(player)[0];
+            activeSeatNames.push(seatName);
+          });
+          io.emit("newRound", activeSeatNames);
+
+          io.emit("updatePot", tableOne.pot);
+          io.emit("flop", tableOne.communityCards[0]);
+        }, 1000);
+
         if (activePlayers.length > 2) {
           index = activePlayers.length - 2;
           const nextPlayer = activePlayers[index];
           const nextPlayerSeat = Object.keys(nextPlayer)[0];
           const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-          io.to(nextPlayerClientId).emit("game", index, betSize);
+
           console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
         } else {
           index = activePlayers.length - 1;
           const nextPlayer = activePlayers[index];
           const nextPlayerSeat = Object.keys(nextPlayer)[0];
           const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-          io.to(nextPlayerClientId).emit("game", index, betSize);
+
           console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
         }
       } else if (tableOne.bettingRound === "flop" && seat === lastToAct) {
-        tableOne.bettingRound = "turn";
         betSize = 0;
-        dealTurn(tableOne);
-        activePlayers.map((player) => {
-          const seatName = Object.keys(player)[0];
-          player[seatName].stake = 0;
-        });
-        io.emit("turn", tableOne.communityCards[1]);
+
+        setTimeout(() => {
+          tableOne.bettingRound = "turn";
+          dealTurn(tableOne);
+          lastToActPlayed = false;
+          activePlayers.map((player) => {
+            const seatName = Object.keys(player)[0];
+            player[seatName].stake = 0;
+          });
+
+          let activeSeatNames = [];
+          activePlayers.forEach((player) => {
+            const seatName = Object.keys(player)[0];
+            activeSeatNames.push(seatName);
+          });
+          io.emit("newRound", activeSeatNames);
+
+          io.emit("updatePot", tableOne.pot);
+          io.emit("turn", tableOne.communityCards[1]);
+        }, 1000);
+
         if (activePlayers.length > 2) {
           index = activePlayers.length - 2;
           const nextPlayer = activePlayers[index];
           const nextPlayerSeat = Object.keys(nextPlayer)[0];
           const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-          io.to(nextPlayerClientId).emit("game", index, betSize);
+
           console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
         } else {
           index = activePlayers.length - 1;
           const nextPlayer = activePlayers[index];
           const nextPlayerSeat = Object.keys(nextPlayer)[0];
           const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-          io.to(nextPlayerClientId).emit("game", index, betSize);
+
           console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
         }
       } else if (tableOne.bettingRound === "turn" && seat === lastToAct) {
-        tableOne.bettingRound = "river";
-        dealRiver(tableOne);
         betSize = 0;
-        activePlayers.map((player) => {
-          const seatName = Object.keys(player)[0];
-          player[seatName].stake = 0;
-        });
-        io.emit("river", tableOne.communityCards[2]);
+
+        setTimeout(() => {
+          tableOne.bettingRound = "river";
+          dealRiver(tableOne);
+          lastToActPlayed = false;
+
+          activePlayers.map((player) => {
+            const seatName = Object.keys(player)[0];
+            player[seatName].stake = 0;
+          });
+
+          let activeSeatNames = [];
+          activePlayers.forEach((player) => {
+            const seatName = Object.keys(player)[0];
+            activeSeatNames.push(seatName);
+          });
+          io.emit("newRound", activeSeatNames);
+
+          io.emit("updatePot", tableOne.pot);
+          io.emit("river", tableOne.communityCards[2]);
+        }, 1000);
+
         if (activePlayers.length > 2) {
           index = activePlayers.length - 2;
           const nextPlayer = activePlayers[index];
           const nextPlayerSeat = Object.keys(nextPlayer)[0];
           const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-          io.to(nextPlayerClientId).emit("game", index, betSize);
+
           console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
         } else {
           index = activePlayers.length - 1;
           const nextPlayer = activePlayers[index];
           const nextPlayerSeat = Object.keys(nextPlayer)[0];
           const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-          io.to(nextPlayerClientId).emit("game", index, betSize);
+
           console.dir(tableOne, { depth: null });
+
+          setTimeout(() => {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }, 1200);
         }
       } else if (tableOne.bettingRound === "river" && seat === lastToAct) {
         //calculate winner
         const hands = formatHands(tableOne);
-        console.log(hands);
+
         fetchWinningHand(hands).then((res) => {
-          console.log(res);
-          // start new game
-          const { index, firstPlayerClientId } = initGame(playersSat, tableOne);
-          console.dir(tableOne, { depth: null });
-          console.log(tableOne.deck.length);
-          activePlayers = playersSat.filter((seat) => {
-            const seatName = Object.keys(seat)[0];
-            return seat[seatName].playing === true;
+          const winner = res.winners[0];
+          const players = res.players;
+          let winningIndex;
+
+          players.forEach((player, index) => {
+            if (player.cards === winner.cards) winningIndex = index;
           });
-          io.emit("gameOver");
-          io.emit("updatePot", tableOne.pot);
-          activePlayers.forEach((player) => {
-            const seatName = Object.keys(player)[0];
-            const cards = player[seatName].cards;
-            io.to(player[seatName].clientId).emit("cards", cards, seatName);
-          });
-          const betSize = 50;
-          io.to(firstPlayerClientId).emit("game", index, betSize);
+
+          console.log(activePlayers[winningIndex]);
+
+          lastToActPlayed = false;
+
+          setTimeout(() => {
+            let activeSeatNames = [];
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              activeSeatNames.push(seatName);
+            });
+            io.emit("gameOver", activeSeatNames);
+          }, 2000);
+
+          setTimeout(() => {
+            // start new game
+            const { index, firstPlayerClientId } = initGame(
+              playersSat,
+              tableOne
+            );
+
+            console.dir(tableOne, { depth: null });
+            console.log(tableOne.deck.length);
+
+            activePlayers = playersSat.filter((seat) => {
+              const seatName = Object.keys(seat)[0];
+              return seat[seatName].playing === true;
+            });
+
+            io.emit("updatePot", 0);
+
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              const cards = player[seatName].cards;
+              io.to(player[seatName].clientId).emit("cards", cards, seatName);
+            });
+
+            let activeSeatNames = [];
+            activePlayers.forEach((player) => {
+              const seatName = Object.keys(player)[0];
+              activeSeatNames.push([seatName, player[seatName].stake]);
+            });
+            io.emit("stakes", activeSeatNames);
+
+            const betSize = 50;
+
+            io.to(firstPlayerClientId).emit("game", index, betSize);
+          }, 5000);
         });
-      }
-      //if there is a player at the index send game to them
-      //else send to player at index 0
-      if (activePlayers[index]) {
-        const nextPlayer = activePlayers[index];
-        const nextPlayerSeat = Object.keys(nextPlayer)[0];
-        const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-        if (nextPlayer[nextPlayerSeat].stake - betSize === 0) betSize = 0;
-        io.to(nextPlayerClientId).emit("game", index, betSize);
       } else {
-        index = 0;
-        const firstPlayer = activePlayers[0];
-        const firstPlayerSeat = Object.keys(firstPlayer)[0];
-        const firstPlayerClientId = firstPlayer[firstPlayerSeat].clientId;
-        if (firstPlayer[firstPlayerSeat].stake - betSize === 0) betSize = 0;
-        io.to(firstPlayerClientId).emit("game", index, betSize);
+        console.log(activePlayers, "<-------");
+        //if there is a player at the index send game to them
+        //else send to player at index 0
+        if (activePlayers[index]) {
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+          const prevPlayer = activePlayers[index - 1];
+          const prevPlayerSeat = Object.keys(prevPlayer)[0];
+
+          console.log(
+            nextPlayer[nextPlayerSeat].stake,
+            prevPlayer[prevPlayerSeat].stake,
+            lastToAct,
+            seat,
+            "<======"
+          );
+          //prettier-ignore
+          if (nextPlayerSeat === lastToAct && nextPlayer[nextPlayerSeat].stake === prevPlayer[prevPlayerSeat].stake) {           
+                io.to(nextPlayerClientId).emit("game", index, betSize, 'check');
+              } else {
+                io.to(nextPlayerClientId).emit("game", index, betSize);
+              }
+          // if (nextPlayer[nextPlayerSeat].stake - betSize === 0) betSize = 0;
+        } else {
+          index = 0;
+          const firstPlayer = activePlayers[0];
+          const firstPlayerSeat = Object.keys(firstPlayer)[0];
+          const firstPlayerClientId = firstPlayer[firstPlayerSeat].clientId;
+
+          const lastPlayer = activePlayers[activePlayers.length - 1];
+          const lastPlayerSeat = Object.keys(lastPlayer)[0];
+          //prettier-ignore
+          if (firstPlayerSeat === lastToAct && firstPlayer[firstPlayerSeat].stake === lastPlayer[lastPlayerSeat].stake) {
+                io.to(firstPlayerClientId).emit("game", index, betSize, "check");
+              } else {
+                io.to(firstPlayerClientId).emit("game", index, betSize);
+              }
+          // betSize = 0;
+        }
       }
     }
 
     if (move === "raise") {
-      //if there is a player at the index send game to them
-      //else send to player at index 0
-      if (activePlayers[index]) {
-        const nextPlayer = activePlayers[index];
-        const nextPlayerSeat = Object.keys(nextPlayer)[0];
-        const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
-        io.to(nextPlayerClientId).emit("game", index, betSize);
+      console.log(activePlayers);
+      if (seat === lastToAct) {
+        lastToActPlayed = true;
+        console.log("yep");
+
+        if (activePlayers.length === 2) {
+          if (lastToActIndex + 1 > activePlayers.length - 1) {
+            lastToActIndex = 0;
+          } else {
+            lastToActIndex += 1;
+          }
+          lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
+        } else {
+          if (lastToActIndex - 1 === -1) {
+            lastToActIndex = activePlayers.length - 1;
+          } else {
+            lastToActIndex -= 1;
+          }
+          console.log(lastToActIndex, "<------index");
+          lastToAct = Object.keys(activePlayers[lastToActIndex])[0];
+        }
+
+        if (activePlayers[index]) {
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+          const prevPlayer = activePlayers[index - 1];
+          const prevPlayerSeat = Object.keys(prevPlayer)[0];
+
+          console.log(
+            nextPlayer[nextPlayerSeat].stake,
+            prevPlayer[prevPlayerSeat].stake,
+            lastToAct,
+            seat,
+            "<======"
+          );
+          //prettier-ignore
+          if (nextPlayerSeat === lastToAct && nextPlayer[nextPlayerSeat].stake === prevPlayer[prevPlayerSeat].stake) {
+            
+            io.to(nextPlayerClientId).emit("game", index, betSize, 'check');
+          } else {
+            io.to(nextPlayerClientId).emit("game", index, betSize);
+          }
+          // if (nextPlayer[nextPlayerSeat].stake - betSize === 0) betSize = 0;
+        } else {
+          index = 0;
+          const firstPlayer = activePlayers[0];
+          const firstPlayerSeat = Object.keys(firstPlayer)[0];
+          const firstPlayerClientId = firstPlayer[firstPlayerSeat].clientId;
+
+          const lastPlayer = activePlayers[activePlayers.length - 1];
+          const lastPlayerSeat = Object.keys(lastPlayer)[0];
+          //prettier-ignore
+          if (firstPlayerSeat === lastToAct && firstPlayer[firstPlayerSeat].stake === lastPlayer[lastPlayerSeat].stake) {
+            io.to(firstPlayerClientId).emit("game", index, betSize, "check");
+          } else {
+            io.to(firstPlayerClientId).emit("game", index, betSize);
+          }
+          // betSize = 0;
+        }
+
+        // console.log(lastToAct, lastToActIndex);
       } else {
-        index = 0;
-        const firstPlayer = activePlayers[0];
-        const firstPlayerSeatName = Object.keys(firstPlayer)[0];
-        const firstPlayerClientId = firstPlayer[firstPlayerSeatName].clientId;
-        io.to(firstPlayerClientId).emit("game", index, betSize);
+        //if there is a player at the index send game to them
+        //else send to player at index 0
+        if (activePlayers[index]) {
+          const nextPlayer = activePlayers[index];
+          const nextPlayerSeat = Object.keys(nextPlayer)[0];
+          const nextPlayerClientId = nextPlayer[nextPlayerSeat].clientId;
+          io.to(nextPlayerClientId).emit("game", index, betSize);
+        } else {
+          index = 0;
+          const firstPlayer = activePlayers[0];
+          const firstPlayerSeatName = Object.keys(firstPlayer)[0];
+          const firstPlayerClientId = firstPlayer[firstPlayerSeatName].clientId;
+          io.to(firstPlayerClientId).emit("game", index, betSize);
+        }
+
+        let activeSeatNames = [];
+        activePlayers.forEach((player) => {
+          const seatName = Object.keys(player)[0];
+          activeSeatNames.push([seatName, player[seatName].stake]);
+        });
+        io.emit("stakes", activeSeatNames);
       }
     }
 
@@ -362,15 +808,52 @@ io.on("connection", (socket) => {
       const stack = player[seatName].stack;
       io.to(player[seatName].clientId).emit("updateStack", stack);
     });
-
-    io.emit("updatePot", tableOne.pot);
   });
 
   socket.on("disconnect", () => {
     console.log(clientId + " has disconnected");
     clients.splice(clients.indexOf(clientId), 1);
-    io.emit("disconnect");
     console.log(clients);
+
+    const seats = tableOne.seats;
+
+    let activeSeatNames = [];
+    activePlayers.forEach((player) => {
+      const seatName = Object.keys(player)[0];
+      activeSeatNames.push(seatName);
+    });
+
+    seats.forEach((seat) => {
+      const seatName = Object.keys(seat)[0];
+      if (seat[seatName].clientId === socket.id) {
+        seat[seatName] = { clientId: null };
+        io.emit("disconnect", seatName);
+      }
+    });
+
+    playersSat = seats.filter((seat) => {
+      const seatName = Object.keys(seat)[0];
+      return seat[seatName].clientId;
+    });
+
+    activePlayers = playersSat.filter((seat) => {
+      const seatName = Object.keys(seat)[0];
+      return seat[seatName].playing === true;
+    });
+
+    if (playersSat && playersSat.length === 1) {
+      activePlayers.map((player) => {
+        const seatName = Object.keys(player)[0];
+        player[seatName].stake = 0;
+      });
+      gameInProgress = false;
+      tableOne.pot = 0;
+      tableOne.deck = null;
+      tableOne.communityCards = [[], [], []];
+      io.emit("gameOver", activeSeatNames);
+    }
+
+    console.log(seats);
   });
 });
 
@@ -381,27 +864,33 @@ server.listen(8080, () => {
 function initGame(players, table) {
   table.pot = 0;
   table.deck = null;
-  (table.communityCards = [[], [], []]),
-    //set the blinds
-    players.map((player, index) => {
-      const seatName = Object.keys(player)[0];
-      player[seatName].playing = true;
-      player[seatName].cards = [];
+  table.communityCards = [[], [], []];
+  //set the blinds
+  players.map((player, index) => {
+    const seatName = Object.keys(player)[0];
+    player[seatName].playing = true;
+    player[seatName].cards = [];
 
-      if (index === players.length - 1) {
-        table.pot += 50;
-        player[seatName].stake = 50;
-        player[seatName].stack -= 50;
-      } else if (index === players.length - 2) {
-        table.pot += 25;
-        player[seatName].stake = 25;
-        player[seatName].stack -= 25;
-      } else {
-        return (player[seatName].stake = 0);
-      }
-    });
+    if (index === players.length - 1) {
+      table.pot += 50;
+      player[seatName].stake = 50;
+      player[seatName].stack -= 50;
+    } else if (index === players.length - 2) {
+      table.pot += 25;
+      player[seatName].stake = 25;
+      player[seatName].stack -= 25;
+    } else {
+      return (player[seatName].stake = 0);
+    }
+  });
 
   dealCards(players, table);
+
+  players.forEach((player) => {
+    const seatName = Object.keys(player)[0];
+    const stack = player[seatName].stack;
+    io.to(player[seatName].clientId).emit("updateStack", stack);
+  });
 
   let index = 0;
   gameInProgress = true;

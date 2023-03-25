@@ -15,7 +15,7 @@ const fourthCard = document.getElementById("fourthCard");
 const fifthCard = document.getElementById("fifthCard");
 
 let gameTablePlayers;
-let currentStack = 4975;
+let currentStack = 5000;
 let clicked = false;
 let currentSeat;
 let currentIndex;
@@ -45,63 +45,17 @@ seatButtons.forEach((seat) => {
   });
 });
 
-socket.on("connection", (tableOne) => {
-  gameTablePlayers = tableOne.players;
-
-  for (let player in gameTablePlayers) {
-    //set opponent seats to purple
-    document.getElementById(
-      `${gameTablePlayers[player].seatId}`
-    ).style.backgroundColor = "purple";
-  }
-});
-
-socket.on("success", (seatId) => {
-  currentSeat = seatId;
-  document.getElementById(seatId).style.backgroundColor = "green";
-  document.getElementById("usernameText").innerHTML = `USERNAME: ${prompt(
-    "username"
-  )}`;
-});
-
-socket.on("opponent", (seatId) => {
-  document.getElementById(seatId).style.backgroundColor = "purple";
-});
-
-socket.on("alreadySat", () => {
-  alert("you're already sat in a seat");
-});
-
-socket.on("seatTaken", (seatId) => {
-  alert(`sorry... someone is already sat in ${seatId}`);
-});
-
-socket.on("cards", (cards, seatName) => {
-  const cardOne = cards[0];
-  const cardTwo = cards[1];
-  console.log(cardOne.img);
-  console.log(cardTwo.img);
-  document.getElementById(`${seatName}CardOne`).style.background = cardOne.img;
-  document.getElementById(`${seatName}CardOne`).style.backgroundSize =
-    "contain";
-  document.getElementById(`${seatName}CardTwo`).style.background = cardTwo.img;
-  document.getElementById(`${seatName}CardTwo`).style.backgroundSize =
-    "contain";
-  document.getElementById(
-    "cardsText"
-  ).innerHTML = `CARDS: ${cardOne.card} ${cardOne.suit} & ${cardTwo.card} ${cardTwo.suit}`;
-});
-
-socket.on("table", (tableOne) => {
-  console.log(tableOne);
-});
-
-socket.on("pot", (betSize) => {
-  pot.innerText = `POT ${betSize}`;
-});
-
 foldBtn.addEventListener("click", () => {
   const move = "fold";
+  document.getElementById(`${currentSeat}CardOne`).style.background =
+    'center no-repeat url("https://www.magicbox.uk.com/wp-content/uploads/2015/05/cardsbic809_red-alt2.jpg")';
+  document.getElementById(`${currentSeat}CardOne`).style.backgroundSize =
+    "150%";
+  document.getElementById(`${currentSeat}CardTwo`).style.background =
+    'center no-repeat url("https://www.magicbox.uk.com/wp-content/uploads/2015/05/cardsbic809_red-alt2.jpg")';
+  document.getElementById(`${currentSeat}CardTwo`).style.backgroundSize =
+    "150%";
+  document.getElementById("cardsText").innerHTML = `CARDS: `;
   playButtonsContainer.style.display = "none";
   socket.emit("game", currentIndex, move, currentBet, currentSeat);
 });
@@ -168,14 +122,103 @@ betInput.addEventListener("wheel", function (e) {
   e.stopPropagation();
 });
 
-socket.on("game", (index, betSize) => {
+socket.on("connection", (tableOne) => {
+  gameTablePlayers = tableOne.players;
+
+  for (let player in gameTablePlayers) {
+    //set opponent seats to purple
+    document.getElementById(
+      `${gameTablePlayers[player].seatId}`
+    ).style.backgroundColor = "purple";
+  }
+});
+
+socket.on("success", (seatId) => {
+  currentSeat = seatId;
+  document.getElementById(seatId).style.backgroundColor = "green";
+  const username = prompt("username");
+  document.getElementById("usernameText").innerHTML = `USERNAME: ${username}`;
+
+  socket.emit("username", username, currentSeat);
+});
+
+socket.on("opponent", (seatId) => {
+  document.getElementById(seatId).style.backgroundColor = "purple";
+});
+
+socket.on("alreadySat", () => {
+  alert("you're already sat in a seat");
+});
+
+socket.on("seatTaken", (seatId) => {
+  alert(`sorry... someone is already sat in ${seatId}`);
+});
+
+socket.on("cards", (cards, seatName) => {
+  const cardOne = cards[0];
+  const cardTwo = cards[1];
+
+  document.getElementById(`${seatName}CardOne`).style.background = cardOne.img;
+  document.getElementById(`${seatName}CardOne`).style.backgroundSize =
+    "contain";
+  document.getElementById(`${seatName}CardTwo`).style.background = cardTwo.img;
+  document.getElementById(`${seatName}CardTwo`).style.backgroundSize =
+    "contain";
+  document.getElementById(
+    "cardsText"
+  ).innerHTML = `CARDS: ${cardOne.card} ${cardOne.suit} & ${cardTwo.card} ${cardTwo.suit}`;
+});
+
+socket.on("table", (tableOne) => {
+  console.log(tableOne);
+});
+
+socket.on("pot", (betSize) => {
+  pot.innerText = `POT ${betSize}`;
+});
+
+socket.on("stakes", (stakes, fold) => {
+  console.log(stakes);
+  //array of arrays with seatName and corresponding bet, e.g [['seatOne', 25], ['seatTwo', 50]]
+  if (fold) {
+    setTimeout(() => {
+      document.getElementById(`${stakes}Chips`).remove();
+    }, 2000);
+  } else {
+    stakes.forEach((array) => {
+      const seat = array[0];
+      const bet = array[1];
+      let chips;
+      let stake;
+
+      if (document.getElementById(`${seat}Chips`)) {
+        document.getElementById(`${seat}Stake`).innerText = `${bet}`;
+      } else {
+        if (bet !== 0) {
+          chips = document.createElement("div");
+          stake = document.createElement("p");
+          stake.innerText = `${bet}`;
+          stake.className = `stake`;
+          stake.id = `${seat}Stake`;
+          chips.id = `${seat}Chips`;
+          chips.className = `chips`;
+          document.getElementById(seat).appendChild(chips);
+          chips.appendChild(stake);
+        }
+      }
+    });
+  }
+});
+
+socket.on("game", (index, betSize, isCheck) => {
   currentIndex = index;
   currentBet = betSize;
   betInput.min = betSize * 2;
   betInput.value = betSize * 2;
-  console.log(index, betSize);
-  playButtonsContainer.style.display = "inline-table";
-  if (betSize === 0) {
+
+  playButtonsContainer.style.display = "flex";
+
+  if (isCheck === "check" || betSize === 0) {
     callBtn.style.display = "none";
     checkBtn.style.display = "unset";
   } else {
@@ -194,7 +237,14 @@ socket.on("updatePot", (potAmount) => {
   pot.innerText = `POT ${potAmount}`;
 });
 
-socket.on("gameOver", () => {
+socket.on("newRound", (activeSeatNames) => {
+  console.log(activeSeatNames);
+  activeSeatNames.forEach((activeSeat) => {
+    document.getElementById(`${activeSeat}Chips`).remove();
+  });
+});
+
+socket.on("gameOver", (activeSeatNames) => {
   playButtonsContainer.style.display = "none";
   firstCard.style.background =
     'center no-repeat url("https://www.magicbox.uk.com/wp-content/uploads/2015/05/cardsbic809_red-alt2.jpg")';
@@ -211,6 +261,22 @@ socket.on("gameOver", () => {
   fifthCard.style.background =
     'center no-repeat url("https://www.magicbox.uk.com/wp-content/uploads/2015/05/cardsbic809_red-alt2.jpg")';
   fifthCard.style.backgroundSize = "150%";
+
+  document.getElementById(`${currentSeat}CardOne`).style.background =
+    'center no-repeat url("https://www.magicbox.uk.com/wp-content/uploads/2015/05/cardsbic809_red-alt2.jpg")';
+  document.getElementById(`${currentSeat}CardOne`).style.backgroundSize =
+    "150%";
+  document.getElementById(`${currentSeat}CardTwo`).style.background =
+    'center no-repeat url("https://www.magicbox.uk.com/wp-content/uploads/2015/05/cardsbic809_red-alt2.jpg")';
+  document.getElementById(`${currentSeat}CardTwo`).style.backgroundSize =
+    "150%";
+  document.getElementById("cardsText").innerHTML = `CARDS: `;
+
+  pot.innerText = `POT: 0`;
+
+  activeSeatNames.forEach((activeSeat) => {
+    document.getElementById(`${activeSeat}Chips`).remove();
+  });
 });
 
 socket.on("flop", (cards) => {
@@ -232,7 +298,10 @@ socket.on("river", (cards) => {
   fifthCard.style.backgroundSize = "contain";
 });
 
-socket.on("disconnect", () => {});
+socket.on("disconnect", (seatId) => {
+  document.getElementById(seatId).style.backgroundColor = "black";
+  document.getElementById(`${seatId}Chips`).remove();
+});
 
 function countdown(seatId) {
   let seconds = 60;
