@@ -1,3 +1,5 @@
+const fetch = require("node-fetch");
+
 function formatHands(table) {
   const seats = table.seats.filter((player) => {
     const seatName = Object.keys(player)[0];
