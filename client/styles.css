@@ -184,11 +184,6 @@ button:hover {
   scale: 2;
 }
 
-/* #seatOneCards {
-  left: 74.3%;
-  top: 75%;
-} */
-
 #seatOneCardOne {
   background: center no-repeat url("");
   background-size: contain;
@@ -198,12 +193,6 @@ button:hover {
   background: center no-repeat url("");
   background-size: contain;
 }
-
-/* #seatTwoCards {
-  left: 61%;
-  top: 65%;
-  transform: rotate(30deg);
-} */
 
 #seatTwoCardOne {
   background: center no-repeat url("");
@@ -215,12 +204,6 @@ button:hover {
   background-size: contain;
 }
 
-/* #seatThreeCards {
-  left: 60.5%;
-  top: 13%;
-  transform: rotate(-30deg);
-} */
-
 #seatThreeCardOne {
   background: center no-repeat url("");
   background-size: contain;
@@ -230,11 +213,6 @@ button:hover {
   background: center no-repeat url("");
   background-size: contain;
 }
-
-/* #seatFourCards {
-  left: 74.4%;
-  top: 1%;
-} */
 
 #seatFourCardOne {
   background: center no-repeat url("");
@@ -246,12 +224,6 @@ button:hover {
   background-size: contain;
 }
 
-/* #seatFiveCards {
-  left: 87.5%;
-  top: 12%;
-  transform: rotate(30deg);
-} */
-
 #seatFiveCardOne {
   background: center no-repeat url("");
   background-size: contain;
@@ -261,12 +233,6 @@ button:hover {
   background: center no-repeat url("");
   background-size: contain;
 }
-
-/* #seatSixCards {
-  left: 88%;
-  top: 65%;
-  transform: rotate(-30deg);
-} */
 
 #seatSixCardOne {
   background: center no-repeat url("");

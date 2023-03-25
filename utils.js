@@ -60,8 +60,4 @@ function fetchWinningHand(hands) {
   });
 }
 
-// function findWinner(winningHand) {
-
-// }
-
 module.exports = { formatHands, fetchWinningHand };
