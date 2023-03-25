@@ -1,4 +1,4 @@
-const socket = io("https://stately-ganache-e4bf1a.netlify.app");
+const socket = io();
 const betInput = document.getElementById("betInput");
 const betBtn = document.getElementById("betBtn");
 const callBtn = document.getElementById("callBtn");
