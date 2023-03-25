@@ -5,6 +5,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 app.use(express.static(`${__dirname}/../client`));
+const PORT = process.env.PORT || 8080;
 
 const {
   dealCards,
@@ -842,7 +843,7 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(process.env.PORT || 8080, () => {
+server.listen(PORT, () => {
   console.log(`server listening`);
 });
 
