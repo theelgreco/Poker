@@ -31,11 +31,11 @@ const tableOne = {
 };
 
 let gameInProgress;
-let playersSat;
-let activePlayers;
 let lastToAct;
 let lastToActIndex;
 let lastToActPlayed = false;
+let playersSat = [];
+let activePlayers = [];
 let clientsSat = [];
 
 io.on("connection", (socket) => {
