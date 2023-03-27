@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
 const io = new Server(server, {
   cors: {
-    origin: "https://stelpoker.netlify.app/",
+    origin: "https://stelpoker.netlify.app",
   },
 });
 // app.use(express.static(`${__dirname}/../client`));
