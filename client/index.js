@@ -20,7 +20,6 @@ let clicked = false;
 let currentSeat;
 let currentIndex;
 let currentBet;
-let random;
 
 betInput.max = currentStack;
 
