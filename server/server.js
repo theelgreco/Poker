@@ -12,7 +12,7 @@ const io = new Server(server, {
     origin: "https://tranquil-gingersnap-6d4dfa.netlify.app",
   },
 });
-app.use(express.static(`${__dirname}/../client`));
+// app.use(express.static(`${__dirname}/../client`));
 
 const {
   dealCards,
