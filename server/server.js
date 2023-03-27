@@ -1,11 +1,18 @@
 const http = require("http");
 const express = require("express");
-const socketio = require("socket.io");
+// const socketio = require("socket.io");
+const { Server } = require("socket.io");
 const app = express();
+const cors = require("cors");
 const server = http.createServer(app);
-const io = socketio(server);
-app.use(express.static(`${__dirname}/../client`));
+// const io = socketio(server);
 const PORT = process.env.PORT || 3001;
+const io = new Server(server, {
+  cors: {
+    origin: "https://tranquil-gingersnap-6d4dfa.netlify.app/",
+  },
+});
+app.use(express.static(`${__dirname}/../client`));
 
 const {
   dealCards,
@@ -37,13 +44,14 @@ let lastToActPlayed = false;
 let playersSat = [];
 let activePlayers = [];
 let clientsSat = [];
+const clients = [];
 
 io.on("connection", (socket) => {
-  const clients = [];
   const clientId = socket.id;
-  for (let sockets in io.sockets.sockets) {
-    clients.push(sockets);
-  }
+  // for (let sockets in io.sockets.sockets) {
+  //   clients.push(sockets);
+  // }
+  clients.push(clientId);
 
   const seats = tableOne.seats;
 
