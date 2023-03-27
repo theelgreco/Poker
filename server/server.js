@@ -821,7 +821,7 @@ io.on("connection", (socket) => {
       const seatName = Object.keys(seat)[0];
       if (seat[seatName].clientId === socket.id) {
         seat[seatName] = { clientId: null };
-        io.emit("disconnect", seatName);
+        io.emit("userLeft", seatName);
       }
     });
 

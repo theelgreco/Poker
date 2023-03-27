@@ -303,7 +303,7 @@ socket.on("winner", (username, seatName) => {
   alert(`${username} (${seatName}) wins!`);
 });
 
-socket.on("disconnect", (seatId) => {
+socket.on("userLeft", (seatId) => {
   document.getElementById(seatId).style.backgroundColor = "black";
   document.getElementById(`${seatId}Chips`).remove();
 });
