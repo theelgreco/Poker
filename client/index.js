@@ -1,5 +1,4 @@
-const io = require("socket.io-client");
-const socket = io("wss://poker-game-0fhr.onrender.com");
+const socket = io("https://poker-game-0fhr.onrender.com");
 const betInput = document.getElementById("betInput");
 const betBtn = document.getElementById("betBtn");
 const callBtn = document.getElementById("callBtn");
